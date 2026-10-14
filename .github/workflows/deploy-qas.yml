@@ -38,7 +38,11 @@ jobs:
       - run: npx vite build --mode qas --base /brimahd-qas/
         working-directory: app
       - name: Verificar que el modo prueba quedo activo
-        run: grep -q "brimahd_db_qas" app/dist/assets/*.js || (echo "El build no tiene modo prueba: no se publica para no gastar numeros reales" && exit 1)
+        run: |
+          if ! grep -q "brimahd_db_qas" app/dist/assets/*.js; then
+            echo "El build no tiene modo prueba, no se publica para no gastar numeros reales"
+            exit 1
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/dist
