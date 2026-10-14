@@ -1,0 +1,45 @@
+name: Publicar QAS
+# Arma la app desde la rama indicada en el archivo RAMA del repo
+# Brimahd-inspeccion y la publica en GitHub Pages de este repo (QAS).
+# Se ejecuta al cambiar RAMA (o cualquier archivo) y también a mano desde
+# la pestaña Actions, para traer los últimos cambios de la rama.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: qas
+  cancel-in-progress: true
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - name: Leer rama a publicar
+        id: rama
+        run: echo "nombre=$(tr -d '[:space:]' < RAMA)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: isaacjorquera5823-dev/Brimahd-inspeccion
+          ref: ${{ steps.rama.outputs.nombre }}
+          path: app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: app
+      # --mode qas activa el modo prueba (numeros PRUEBA-XXXX, almacenamiento separado de PRD)
+      - run: npx vite build --mode qas --base /brimahd-qas/
+        working-directory: app
+      - name: Verificar que el modo prueba quedo activo
+        run: grep -q "brimahd_db_qas" app/dist/assets/*.js || (echo "El build no tiene modo prueba: no se publica para no gastar numeros reales" && exit 1)
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+      - uses: actions/deploy-pages@v4
